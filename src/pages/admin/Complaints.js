@@ -3,14 +3,21 @@ import axios from "axios";
 
 const Complaints = () => {
   const [complaints, setComplaints] = useState([]);
+  const [shopStats, setShopStats] = useState({}); // Store shop stats
   const [newComplaint, setNewComplaint] = useState({ description: "" });
 
-  // Retrieve stored user data from localStorage
   const userData = JSON.parse(localStorage.getItem("user"));
   const token = userData?.token;
-  const role = userData?.role; // "admin" or "vendor"
-  // For vendors, we assume the vendor's ID is stored in userData.data._id
-  const vendorId = userData?.data?._id; 
+  const role = userData?.role;
+  const userId = userData?.data?._id; // User ID
+  
+  // Ensure vendorId is defined
+  const vendorId = role === "vendor" ? userId : null;
+  
+  if (!userId || role !== "admin") {
+    console.error("Required IDs or role are missing.");
+  }
+  
 
   useEffect(() => {
     let endpoint = "";
@@ -22,63 +29,47 @@ const Complaints = () => {
       console.error("Required IDs or role are missing.");
       return;
     }
-    
-    console.log("Fetching complaints from:", endpoint);
+
     axios
       .get(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((response) => {
-        console.log("API Response:", response.data);
-        setComplaints(response.data.data);
+        const fetchedComplaints = response.data.data;
+        setComplaints(fetchedComplaints);
+
+        // Fetch shop stats for each complaint
+        fetchedComplaints.forEach((complaint) => {
+          if (complaint.shop) {
+            fetchShopStats(complaint.shop);
+          }
+        });
       })
       .catch((error) => console.error("Error fetching complaints:", error));
   }, [role, vendorId, token]);
 
-  const handleAddComplaint = (e) => {
-    e.preventDefault();
-    if (!newComplaint.description) return;
-    if (!userData?._id) {
-      console.error("User ID is missing.");
-      return;
-    }
-    const bodyData = {
-      user: userData._id,
-      shop: vendorId,
-      description: newComplaint.description,
-      status: "Pending",
-    };
-
-    axios
-      .post("https://aquarise-intelflow-backend.vercel.app/api/complaints", bodyData, {
+  // Fetch Shop Stats
+  const fetchAllComplaints = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await apiSauce.get(`/api/complaints?role=admin`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((response) => {
-        setComplaints([...complaints, response.data.data]);
-        setNewComplaint({ description: "" });
-      })
-      .catch((error) => console.error("Error adding complaint:", error));
+      });
+  
+      if (response.ok) {
+        console.log("All Complaints:", response.data);
+      } else {
+        console.error("Failed to fetch complaints:", response.problem);
+      }
+    } catch (error) {
+      console.error("Error fetching complaints:", error);
+    }
   };
+  
 
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4 text-left">Vendor Complaints</h2>
-      <div className="bg-white shadow-md rounded-lg p-4 mb-4">
-        <h3 className="text-lg font-semibold mb-2">Submit a Complaint</h3>
-        <form onSubmit={handleAddComplaint} className="flex gap-4">
-          <input
-            type="text"
-            placeholder="Complaint Description"
-            value={newComplaint.description}
-            onChange={(e) => setNewComplaint({ description: e.target.value })}
-            className="border p-2 rounded w-2/3"
-            required
-          />
-          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
-            Submit
-          </button>
-        </form>
-      </div>
       <div className="bg-white shadow-md rounded-lg p-4">
         <table className="w-full border-collapse">
           <thead>
@@ -86,7 +77,7 @@ const Complaints = () => {
               <th className="p-3 text-left border-b">Complaint ID</th>
               <th className="p-3 text-left border-b">User</th>
               <th className="p-3 text-left border-b">Description</th>
-              <th className="p-3 text-left border-b">Status</th>
+              <th className="p-3 text-left border-b">Shop Stats</th>
             </tr>
           </thead>
           <tbody>
@@ -96,7 +87,16 @@ const Complaints = () => {
                   <td className="p-3">{comp._id}</td>
                   <td className="p-3">{comp.user?.name || "Unknown"}</td>
                   <td className="p-3">{comp.description}</td>
-                  <td className="p-3">{comp.status || "Pending"}</td>
+                  <td className="p-3">
+                    {shopStats[comp.shop] ? (
+                      <div>
+                        <p>Total Orders: {shopStats[comp.shop].totalOrders}</p>
+                        <p>Revenue: ${shopStats[comp.shop].totalRevenue}</p>
+                      </div>
+                    ) : (
+                      "Loading..."
+                    )}
+                  </td>
                 </tr>
               ))
             ) : (
