@@ -1,0 +1,54 @@
+/* src/components/InteractiveOverlayLoader.css */
+.water-drop-loader {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+  }
+  
+  .drop {
+    width: 20px;
+    height: 20px;
+    background-color: #0b9797; /* Water color */
+    border-radius: 50%;
+    animation: drop 1s infinite ease-in-out;
+  }
+  
+  .drop:nth-child(1) {
+    animation-delay: 0s;
+  }
+  
+  .drop:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  
+  .drop:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+  
+  @keyframes drop {
+    0% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(50px);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+  
+  .loading-text {
+    animation: fadeIn 1s ease-in-out infinite alternate;
+  }
+  
+  @keyframes fadeIn {
+    0% {
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
