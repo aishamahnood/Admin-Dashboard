@@ -1,16 +1,30 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { apiservice } from "../../api";
 
 const Complaints = () => {
   const [complaints, setComplaints] = useState([]);
   const [shopStats, setShopStats] = useState({}); // Store shop stats
   const [newComplaint, setNewComplaint] = useState({ description: "" });
+  const [vendors, setVendors] = useState([]);
 
   const userData = JSON.parse(localStorage.getItem("user"));
   const token = userData?.token;
   const role = userData?.role;
   const userId = userData?.data?._id; // User ID
   
+  useEffect(() => {
+      apiservice.get(`/api/shops`)
+        .then((res) => {
+          console.log("Vendor List Data:", res.data);
+          const vendorList = res.data.data
+            .filter(shop => shop.vendor) // Ensure vendor exists
+            .map(shop => shop.vendor);
+          setVendors(vendorList || []);
+        })
+        .catch((err) => console.error("Error fetching vendors:", err));
+    }, []);
+    
   // Ensure vendorId is defined
   const vendorId = role === "vendor" ? userId : null;
   
@@ -20,34 +34,27 @@ const Complaints = () => {
   
 
   useEffect(() => {
-    let endpoint = "";
-    if (role === "vendor" && vendorId) {
-      endpoint = `https://aquarise-intelflow-backend.vercel.app/api/complaints/vendor/${vendorId}`;
-    } else if (role === "admin") {
-      endpoint = `https://aquarise-intelflow-backend.vercel.app/api/complaints`;
-    } else {
-      console.error("Required IDs or role are missing.");
-      return;
+    if(vendors?.length) {
+      ['671e44ae4ee0be1b284eba4a', '67beaf3e43af0500ddd8d112'].forEach(element => {
+        console.log('elements', element)
+        let endpoint = `https://aquarise-intelflow-backend.vercel.app/api/complaints/${element}`;
+        axios
+          .get(endpoint, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          .then((response) => {
+            console.log("response", response.data);
+            
+            const fetchedComplaints = response.data.data;
+            setComplaints(fetchedComplaints);
+          })
+          .catch((error) => console.error("Error fetching complaints:", error));
+      });
     }
+  }, [role, vendorId, token, vendors]);
 
-    axios
-      .get(endpoint, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((response) => {
-        const fetchedComplaints = response.data.data;
-        setComplaints(fetchedComplaints);
-
-        // Fetch shop stats for each complaint
-        fetchedComplaints.forEach((complaint) => {
-          if (complaint.shop) {
-            fetchShopStats(complaint.shop);
-          }
-        });
-      })
-      .catch((error) => console.error("Error fetching complaints:", error));
-  }, [role, vendorId, token]);
-
+  console.log('complaints', complaints);
+  
   // Fetch Shop Stats
   const fetchAllComplaints = async () => {
     try {
@@ -77,7 +84,7 @@ const Complaints = () => {
               <th className="p-3 text-left border-b">Complaint ID</th>
               <th className="p-3 text-left border-b">User</th>
               <th className="p-3 text-left border-b">Description</th>
-              <th className="p-3 text-left border-b">Shop Stats</th>
+              {/* <th className="p-3 text-left border-b">Shop Stats</th> */}
             </tr>
           </thead>
           <tbody>
@@ -87,7 +94,7 @@ const Complaints = () => {
                   <td className="p-3">{comp._id}</td>
                   <td className="p-3">{comp.user?.name || "Unknown"}</td>
                   <td className="p-3">{comp.description}</td>
-                  <td className="p-3">
+                  {/* <td className="p-3">
                     {shopStats[comp.shop] ? (
                       <div>
                         <p>Total Orders: {shopStats[comp.shop].totalOrders}</p>
@@ -96,7 +103,7 @@ const Complaints = () => {
                     ) : (
                       "Loading..."
                     )}
-                  </td>
+                  </td> */}
                 </tr>
               ))
             ) : (
